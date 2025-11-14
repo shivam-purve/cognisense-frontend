@@ -1,4 +1,4 @@
-import { useEffect, useState, cloneElement } from 'react';
+import { cloneElement } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
@@ -6,33 +6,10 @@ import Analytics from './pages/Analytics';
 import Insights from './pages/Insights';
 import Settings from './pages/Settings';
 import Auth from './pages/Auth';
-import { supabase } from './supabaseClient';
+import { useAuth } from './AuthContext';
 
 const RequireAuth = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!mounted) return;
-      setUser(user ?? null);
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (

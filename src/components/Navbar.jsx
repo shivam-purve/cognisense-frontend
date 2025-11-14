@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Activity, Moon, Sun, Bell, User } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../AuthContext';
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [user, setUser] = useState(null);
   const [avatarError, setAvatarError] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
-  
+  const { user } = useAuth();
+
   const navItems = [
     { path: '/', label: 'Dashboard' },
     { path: '/analytics', label: 'Analytics' },
@@ -25,27 +26,6 @@ const Navbar = () => {
       setIsDarkMode(savedTheme === 'dark');
       document.documentElement.classList.toggle('light', savedTheme === 'light');
     }
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!mounted) return;
-      setUser(user ?? null);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
   }, []);
 
   useEffect(() => {
@@ -142,7 +122,7 @@ const Navbar = () => {
 
           {/* Right side icons */}
           <div className="flex items-center gap-4">
-            <select className="bg-[#2d3748] text-gray-300 text-sm rounded px-3 py-1.5 border border-gray-700 focus:outline-none focus:border-blue-500">
+            <select className="bg-[#2d3748] text-gray-300 p-5 text-sm rounded px-3 py-1.5 border border-gray-700 focus:outline-none focus:border-blue-500">
               <option>This Week</option>
               <option>This Month</option>
               <option>This Year</option>

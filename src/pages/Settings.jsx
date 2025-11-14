@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Download, Trash2, AlertCircle, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 
 const Settings = () => {
   const [websites, setWebsites] = useState([
@@ -22,8 +22,51 @@ const Settings = () => {
   });
 
   const [theme, setTheme] = useState('Dark');
+  const [fontSize, setFontSize] = useState(16);
   const [showAddWebsite, setShowAddWebsite] = useState(false);
   const [newWebsiteName, setNewWebsiteName] = useState('');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      setTheme('Dark');
+    } else if (savedTheme === 'light') {
+      setTheme('Light');
+    }
+
+    const savedFontSize = parseInt(localStorage.getItem('fontSize'), 10);
+    if (!Number.isNaN(savedFontSize) && savedFontSize >= 12 && savedFontSize <= 20) {
+      setFontSize(savedFontSize);
+      document.documentElement.style.fontSize = `${savedFontSize}px`;
+    }
+  }, []);
+
+  const applyTheme = (themeOption) => {
+    let effectiveTheme = themeOption;
+
+    if (themeOption === 'Auto' && window.matchMedia) {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      effectiveTheme = prefersDark ? 'Dark' : 'Light';
+    }
+
+    setTheme(themeOption);
+
+    const isDark = effectiveTheme === 'Dark';
+    const themeValue = isDark ? 'dark' : 'light';
+
+    localStorage.setItem('theme', themeValue);
+    document.documentElement.classList.toggle('light', !isDark);
+    document.body.style.backgroundColor = isDark ? '#0f1419' : '#f3f4f6';
+
+    window.dispatchEvent(new CustomEvent('df-theme-change', { detail: themeValue }));
+  };
+
+  const handleFontSizeChange = (event) => {
+    const newSize = Number(event.target.value);
+    setFontSize(newSize);
+    localStorage.setItem('fontSize', String(newSize));
+    document.documentElement.style.fontSize = `${newSize}px`;
+  };
 
   const handleAddWebsite = () => {
     if (newWebsiteName.trim()) {
@@ -194,7 +237,7 @@ const Settings = () => {
               {['Light', 'Dark', 'Auto'].map((themeOption) => (
                 <button
                   key={themeOption}
-                  onClick={() => setTheme(themeOption)}
+                  onClick={() => applyTheme(themeOption)}
                   className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                     theme === themeOption
                       ? 'bg-blue-500 text-white'
@@ -213,41 +256,11 @@ const Settings = () => {
               type="range"
               min="12"
               max="20"
-              defaultValue="16"
+              value={fontSize}
+              onChange={handleFontSizeChange}
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
             />
           </div>
-        </div>
-      </div>
-
-      {/* Data Management */}
-      <div className="bg-[#1a1f2e] rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-gray-100 mb-6">Data Management</h2>
-        
-        <div className="space-y-3">
-          <button className="w-full flex items-center justify-between bg-blue-500 hover:bg-blue-600 text-white px-6 py-4 rounded-lg font-medium transition-colors">
-            <div className="flex items-center gap-3">
-              <Download className="w-5 h-5" />
-              <span>Export All Data</span>
-            </div>
-            <span className="text-sm opacity-80">→</span>
-          </button>
-          
-          <button className="w-full flex items-center justify-between bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-4 rounded-lg font-medium transition-colors">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5" />
-              <span>Clear Browsing History</span>
-            </div>
-            <span className="text-sm opacity-80">→</span>
-          </button>
-          
-          <button className="w-full flex items-center justify-between bg-red-500 hover:bg-red-600 text-white px-6 py-4 rounded-lg font-medium transition-colors">
-            <div className="flex items-center gap-3">
-              <Trash2 className="w-5 h-5" />
-              <span>Delete Account</span>
-            </div>
-            <span className="text-sm opacity-80">→</span>
-          </button>
         </div>
       </div>
     </div>
