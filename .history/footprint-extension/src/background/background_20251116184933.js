@@ -7,15 +7,13 @@ let paused = false;
 const SESSION_API = "https://dummy.server.com/session";
 const HTML_API = "https://dummy.server.com/html";
 
-// On install init
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(["events", "settings"], (res) => {
     if (!res.events) chrome.storage.local.set({ events: [] });
-    if (!res.settings) {
+    if (!res.settings)
       chrome.storage.local.set({
         settings: { contentScanning: false, excludeList: [] }
       });
-    }
   });
 });
 
@@ -24,8 +22,10 @@ function persistEvent(event) {
   chrome.storage.local.get({ events: [] }, (res) => {
     const events = res.events || [];
     const twoWeeks = Date.now() - 14 * 24 * 60 * 60 * 1000;
+
     const filtered = events.filter((e) => e.ts >= twoWeeks);
     filtered.push(event);
+
     chrome.storage.local.set({ events: filtered });
   });
 }
@@ -62,7 +62,7 @@ async function sendHtmlToBackend(url, htmlText) {
   }
 }
 
-// Fetch page text from content script
+// Guaranteed contentScript injection before request
 function fetchPageText(tabId) {
   return new Promise((resolve) => {
     chrome.scripting.executeScript(
@@ -106,26 +106,17 @@ async function stopActiveTimer() {
   activeUrl = null;
 }
 
-// Start new session (safe)
+// Start new session
 function handleSwitch(tab) {
-  if (!tab || !tab.url || paused) return;
+  stopActiveTimer();
 
-  // Ignore chrome internal pages
-  if (
-    tab.url.startsWith("chrome://") ||
-    tab.url.startsWith("chrome-extension://")
-  ) {
+  if (!tab || !tab.url) return;
+  if (tab.url.startsWith("chrome://") || tab.url.startsWith("chrome-extension://"))
     return;
-  }
 
   chrome.storage.local.get({ settings: { excludeList: [] } }, (res) => {
     const excludeList = res.settings.excludeList || [];
     if (excludeList.some((e) => tab.url.includes(e))) return;
-
-    // Only stop if switching to a different tab or URL
-    if (activeTabId !== tab.id || activeUrl !== tab.url) {
-      stopActiveTimer();
-    }
 
     activeTabId = tab.id;
     activeUrl = tab.url;
@@ -134,54 +125,36 @@ function handleSwitch(tab) {
     persistEvent({
       type: "session_start",
       url: tab.url,
-      ts: activeStart
+      ts: Date.now()
     });
   });
 }
 
-// -------------------------
-// EVENT LISTENERS
-// -------------------------
-
-// TAB ACTIVATED
+// Listeners
 chrome.tabs.onActivated.addListener(async (info) => {
   if (paused) return;
-
   const tab = await chrome.tabs.get(info.tabId);
   handleSwitch(tab);
 });
 
-// WINDOW FOCUS HANDLING (DEBOUNCED)
-let blurTimeout = null;
-
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (paused) return;
 
-  if (windowId === chrome.windows.WINDOW_ID_NONE) {
-    // Chrome lost focus
-    blurTimeout = setTimeout(() => stopActiveTimer(), 250);
-  } else {
-    // Chrome regained focus
-    clearTimeout(blurTimeout);
+  if (windowId === chrome.windows.WINDOW_ID_NONE) stopActiveTimer();
+  else
     chrome.tabs.query({ active: true, windowId }, (tabs) => {
       if (tabs[0]) handleSwitch(tabs[0]);
     });
-  }
 });
 
-// TAB UPDATED (only when URL changes!)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (paused) return;
 
-  if (tabId === activeTabId && changeInfo.url) {
+  if (tabId === activeTabId && changeInfo.status === "complete")
     handleSwitch(tab);
-  }
 });
 
-// -------------------------
-// MESSAGE HANDLERS
-// -------------------------
-
+// Message handlers
 chrome.runtime.onMessage.addListener((msg, sender, sendResp) => {
   if (!msg?.type) return;
 
@@ -217,7 +190,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResp) => {
     return true;
   }
 
-  // Auto-sent page HTML
+  // NEW: handle auto-sent page_html
   if (msg.type === "page_html") {
     sendHtmlToBackend(sender.tab?.url || "", msg.text);
     sendResp({ ok: true });
