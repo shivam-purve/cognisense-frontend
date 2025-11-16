@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import "./popup.css";
 
-function msToMin(ms) {
-  return Math.round(ms / 60000);
+function secToMin(seconds) {
+  return Math.round(seconds / 60);
 }
 
 const isChrome = typeof chrome !== "undefined" && !!chrome.runtime;
@@ -34,14 +34,14 @@ const Popup = () => {
           const startDay = new Date();
           startDay.setHours(0, 0, 0, 0);
 
-          let totalMs = 0,
+          let totalSeconds = 0,
             clicks = 0,
             keys = 0,
             scrolls = 0;
 
           events.forEach((e) => {
             if (e.type === "session_end" && e.ts >= startDay.getTime())
-              totalMs += e.duration || 0;
+              totalSeconds += e.duration || 0;
 
             if (e.type === "engagement" && e.ts >= startDay.getTime()) {
               clicks += (e.data && e.data.clicks) || 0;
@@ -50,7 +50,7 @@ const Popup = () => {
             }
           });
 
-          setTodayMin(msToMin(totalMs));
+          setTodayMin(secToMin(totalSeconds));
           setEngScore(Math.min(100, Math.round((clicks + keys + scrolls) / 10)));
         });
       } catch (e) {

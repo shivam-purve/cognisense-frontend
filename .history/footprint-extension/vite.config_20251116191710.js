@@ -23,7 +23,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main : resolve(__dirname,'index.html'),
+        main : 
         'popup/index': resolve(__dirname, 'src/popup/index.html'),
         'options/index': resolve(__dirname, 'src/options/index.html'),
         'background/background': resolve(__dirname, 'src/background/background.js'),
